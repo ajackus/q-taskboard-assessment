@@ -109,6 +109,7 @@ curl -H "Authorization: Bearer <token>" http://localhost:3000/api/projects
 
 ## Tech Stack
 
+- Node.js 20 (runtime)
 - Next.js 15 (App Router) / React 19
 - TypeScript 5 (strict mode)
 - Prisma 6 + PostgreSQL 16
