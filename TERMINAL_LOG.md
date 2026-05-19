@@ -56,4 +56,10 @@ DATABASE_URL=postgresql://taskboard:taskboard@localhost:5432/taskboard_test?sche
 ```
 
 ## Part 3c Export Demo
-(To be completed)
+*Note: Since the Airtable Personal Access Token and Base ID were not provided in the environment, the export runs using the `isTest` flag or falls back if real API keys are missing. The integration is fully implemented in `src/lib/airtable.ts` and tested via `npm test` using the mock.*
+
+**To run the real integration:**
+1. Add `AIRTABLE_API_KEY` and `AIRTABLE_BASE_ID` to `.env`.
+2. Ensure the "Tasks" table exists in your Airtable base with columns: `Task ID`, `Title`, `Description`, `Status`, `Assignee`.
+3. Click "Export to Airtable" on the Project Detail page.
+4. Check your Airtable base!

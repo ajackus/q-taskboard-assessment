@@ -55,11 +55,7 @@ describe("Tasks API - IDOR fix", () => {
     taskId = task.id;
   });
 
-  afterAll(async () => {
-    await prisma.task.deleteMany();
-    await prisma.project.deleteMany();
-    await prisma.user.deleteMany();
-  });
+
 
   it("allows admin to edit the task", async () => {
     const req = new NextRequest(`http://localhost/api/tasks/${taskId}`, {
