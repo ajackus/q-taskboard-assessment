@@ -52,14 +52,27 @@ curl -s -X PATCH \
 
 ## Final Test Run
 ```bash
-DATABASE_URL=postgresql://taskboard:taskboard@localhost:5432/taskboard_test?schema=public npm run test
+npm run test -- --no-file-parallelism
+```
+**Output:**
+```
+✓ src/tests/airtable-export.test.ts (3)
+✓ src/tests/tasks-comments.test.ts (3)
+✓ src/tests/tasks-idor.test.ts (2)
+✓ src/tests/schemas.test.ts (7)
+✓ src/tests/TaskCard.test.tsx (3)
+✓ src/tests/auth.test.ts (2)
+
+ Test Files  6 passed (6)
+      Tests  20 passed (20)
 ```
 
 ## Part 3c Export Demo
-*Note: Since the Airtable Personal Access Token and Base ID were not provided in the environment, the export runs using the `isTest` flag or falls back if real API keys are missing. The integration is fully implemented in `src/lib/airtable.ts` and tested via `npm test` using the mock.*
+*Note: The Airtable Personal Access Token and Base ID have been configured in `.env` using real credentials.*
 
 **To run the real integration:**
-1. Add `AIRTABLE_API_KEY` and `AIRTABLE_BASE_ID` to `.env`.
-2. Ensure the "Tasks" table exists in your Airtable base with columns: `Task ID`, `Title`, `Description`, `Status`, `Assignee`.
-3. Click "Export to Airtable" on the Project Detail page.
-4. Check your Airtable base!
+1. Ensure the "Tasks" table exists in your Airtable base with columns: `Task ID`, `Title`, `Description`, `Status`, `Assignee`.
+2. Visit the Project Detail page.
+3. Click "Export to Airtable".
+4. Check your Airtable base (`https://airtable.com/appMhL3cAKyYwo7Nn/tblvVB6IPPEzAUGEL/viwooUJAnl3tMxUL8`) and see the 12 seeded tasks successfully synchronized.
+5. Clicking Export again will perform an idempotent update, updating the existing records.
