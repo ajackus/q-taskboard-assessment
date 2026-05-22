@@ -110,6 +110,8 @@ curl -H "Authorization: Bearer <token>" http://localhost:3000/api/projects
 - `POST /api/projects/:id/tasks` — Create a task (authenticated)
 - `PATCH /api/tasks/:id` — Update a task (authenticated)
 - `DELETE /api/tasks/:id` — Delete a task (authenticated)
+- `GET /api/tasks/:id/comments` — List task comments chronologically (project members, including viewers)
+- `POST /api/tasks/:id/comments` — Post a comment (admin and member only; append-only)
 
 ## Tech Stack
 

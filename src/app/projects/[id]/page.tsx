@@ -195,6 +195,7 @@ export default function ProjectPage({ params }: PageProps) {
           task={activeTask}
           projectId={id}
           members={project.memberships}
+          canPostComments={myRole === "admin" || myRole === "member"}
           onClose={() => setActiveTask(null)}
         />
       )}
