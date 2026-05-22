@@ -11,18 +11,24 @@ import {
   retryWithBackoff,
   taskToAirtableFields,
   TASKBOARD_ID_FIELD,
+  TASK_CREATED_AT_FIELD,
+  TASK_UPDATED_AT_FIELD,
   type ExportTaskInput,
 } from "@/lib/airtable-export";
 
-const sampleTask = (id: string, title: string): ExportTaskInput => ({
+const sampleTask = (
+  id: string,
+  title: string,
+  assignee?: { name: string; email: string } | null
+): ExportTaskInput => ({
   id,
   title,
   description: "desc",
   status: "todo",
   position: 0,
-  createdAt: "2024-01-01T00:00:00.000Z",
-  updatedAt: "2024-01-02T00:00:00.000Z",
-  assignee: { name: "Meera" },
+  createdAt: "2024-01-01T12:00:00.000Z",
+  updatedAt: "2024-01-02T15:30:00.000Z",
+  assignee: assignee ?? { name: "Meera", email: "meera@taskboard.dev" },
 });
 
 describe("airtable error classification", () => {
@@ -39,12 +45,34 @@ describe("airtable error classification", () => {
 });
 
 describe("taskToAirtableFields", () => {
-  it("maps task id to TaskBoard ID field", () => {
+  it("maps task fields including ISO dates and assignee", () => {
     const fields = taskToAirtableFields(sampleTask("task_1", "Ship feature"), "Q3 Launch");
     expect(fields[TASKBOARD_ID_FIELD]).toBe("task_1");
     expect(fields.Title).toBe("Ship feature");
     expect(fields["Project Name"]).toBe("Q3 Launch");
-    expect(fields.Assignee).toBe("Meera");
+    expect(fields["Assignee Name"]).toBe("Meera");
+    expect(fields.Assignee).toEqual({ email: "meera@taskboard.dev" });
+    expect(fields[TASK_CREATED_AT_FIELD]).toBe("2024-01-01T12:00:00.000Z");
+    expect(fields[TASK_UPDATED_AT_FIELD]).toBe("2024-01-02T15:30:00.000Z");
+    expect(fields["Created At"]).toBeUndefined();
+    expect(fields["Updated At"]).toBeUndefined();
+  });
+
+  it("omits Assignee collaborator when unassigned", () => {
+    const fields = taskToAirtableFields(
+      {
+        id: "t1",
+        title: "Solo",
+        description: null,
+        status: "todo",
+        position: 0,
+        createdAt: "2024-01-01T00:00:00.000Z",
+        updatedAt: "2024-01-02T00:00:00.000Z",
+        assignee: null,
+      },
+      "Proj"
+    );
+    expect(fields.Assignee).toBeUndefined();
   });
 });
 

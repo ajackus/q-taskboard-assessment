@@ -138,11 +138,12 @@ Create a table with these field names (exact spelling):
 | Title | Single line text |
 | Description | Long text |
 | Status | Single line text (or Single select) |
-| Assignee | Single line text |
+| Assignee Name | Single line text |
+| Assignee | Collaborator (matched by workspace user email; omit when unassigned) |
 | Position | Number |
 | Project Name | Single line text |
-| Created At | Single line text |
-| Updated At | Single line text |
+| Task Created At | Date (include time, ISO 8601) — do not use a computed "Created At" field |
+| Task Updated At | Date (include time, ISO 8601) — do not use a computed "Updated At" field |
 
 ### API example
 

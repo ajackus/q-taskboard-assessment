@@ -20,8 +20,18 @@ export type ExportTaskInput = {
   position: number;
   createdAt: Date | string;
   updatedAt: Date | string;
-  assignee?: { name: string } | null;
+  assignee?: { name: string; email: string } | null;
 };
+
+/** Writable date fields (ISO 8601). Avoid "Created At"/"Updated At" — often computed in Airtable. */
+export const TASK_CREATED_AT_FIELD = "Task Created At";
+export const TASK_UPDATED_AT_FIELD = "Task Updated At";
+
+function toIsoDateTime(value: Date | string): string {
+  if (value instanceof Date) return value.toISOString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toISOString();
+}
 
 export type ExportFailedRecord = {
   taskId: string;
@@ -40,12 +50,7 @@ export function taskToAirtableFields(
   task: ExportTaskInput,
   projectName: string
 ): Record<string, AirtableFieldValue> {
-  const createdAt =
-    task.createdAt instanceof Date ? task.createdAt.toISOString() : String(task.createdAt);
-  const updatedAt =
-    task.updatedAt instanceof Date ? task.updatedAt.toISOString() : String(task.updatedAt);
-
-  return {
+  const fields: Record<string, AirtableFieldValue> = {
     [TASKBOARD_ID_FIELD]: task.id,
     Title: task.title,
     Description: task.description ?? "",
@@ -53,9 +58,10 @@ export function taskToAirtableFields(
     Assignee: task.assignee?.name ?? "",
     Position: task.position,
     "Project Name": projectName,
-    "Created At": createdAt,
-    "Updated At": updatedAt,
+    [TASK_CREATED_AT_FIELD]: toIsoDateTime(task.createdAt),
+    [TASK_UPDATED_AT_FIELD]: toIsoDateTime(task.updatedAt),
   };
+  return fields;
 }
 
 function sleep(ms: number): Promise<void> {

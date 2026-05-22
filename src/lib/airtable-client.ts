@@ -1,6 +1,12 @@
 import Airtable from "airtable";
 
-export type AirtableFieldValue = string | number | null;
+export type AirtableCollaborator = { email: string };
+export type AirtableFieldValue =
+  | string
+  | number
+  | null
+  | AirtableCollaborator
+  | AirtableCollaborator[];
 export type AirtableUpsertInput = { fields: Record<string, AirtableFieldValue> };
 
 export interface AirtableRecordWriter {

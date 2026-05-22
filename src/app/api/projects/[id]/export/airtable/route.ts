@@ -41,7 +41,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const tasks = await prisma.task.findMany({
     where: { projectId },
     include: {
-      assignee: { select: { name: true } },
+      assignee: { select: { name: true, email: true } },
     },
     orderBy: [{ status: "asc" }, { position: "asc" }],
   });
