@@ -93,6 +93,7 @@ curl -H "Authorization: Bearer <token>" http://localhost:3000/api/projects
 - `POST /api/auth/register` — Create account
 - `POST /api/auth/login` — Sign in, get JWT
 - `GET /api/users/me` — Current user (authenticated)
+- `GET /api/users` — List users for member assignment (authenticated)
 
 ### Projects
 - `GET /api/projects` — List projects you're a member of (authenticated)
@@ -100,6 +101,9 @@ curl -H "Authorization: Bearer <token>" http://localhost:3000/api/projects
 - `GET /api/projects/:id` — Project detail with tasks and members (authenticated)
 - `PATCH /api/projects/:id` — Update project (authenticated)
 - `DELETE /api/projects/:id` — Delete project (authenticated)
+- `POST /api/projects/:id/members` — Add member with role `member` or `viewer` (admin only)
+- `PATCH /api/projects/:id/members/:membershipId` — Change member/viewer role (admin only)
+- `DELETE /api/projects/:id/members/:membershipId` — Remove member/viewer (admin only)
 
 ### Tasks
 - `GET /api/projects/:id/tasks` — List tasks in a project (authenticated)

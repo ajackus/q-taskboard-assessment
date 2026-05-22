@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { registerSchema, loginSchema } from "@/schemas/auth";
+import { createMembershipSchema, updateMembershipSchema } from "@/schemas/membership";
 import { createTaskSchema, updateTaskSchema } from "@/schemas/task";
 
 describe("auth schemas", () => {
@@ -45,6 +46,34 @@ describe("task schemas", () => {
 
   it("rejects unknown statuses", () => {
     const result = updateTaskSchema.safeParse({ status: "blocked" });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("membership schemas", () => {
+  it("accepts member and viewer roles on create", () => {
+    expect(
+      createMembershipSchema.safeParse({ userId: "u_1", role: "member" }).success
+    ).toBe(true);
+    expect(
+      createMembershipSchema.safeParse({ userId: "u_1", role: "viewer" }).success
+    ).toBe(true);
+  });
+
+  it("rejects admin role on create", () => {
+    const result = createMembershipSchema.safeParse({
+      userId: "u_1",
+      role: "admin",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts member and viewer on update", () => {
+    expect(updateMembershipSchema.safeParse({ role: "viewer" }).success).toBe(true);
+  });
+
+  it("rejects admin role on update", () => {
+    const result = updateMembershipSchema.safeParse({ role: "admin" });
     expect(result.success).toBe(false);
   });
 });

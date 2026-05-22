@@ -4,9 +4,10 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, getToken } from "@/lib/api-client";
+import { apiFetch, getStoredUser, getToken } from "@/lib/api-client";
 import { Header } from "@/components/Header";
 import { StatusColumn } from "@/components/StatusColumn";
+import { ProjectDetail } from "@/components/ProjectDetail";
 import { TaskDetail } from "@/components/TaskDetail";
 import type { ApiProjectDetail, ApiTask, TaskStatus } from "@/types";
 import { STATUS_ORDER } from "@/types";
@@ -19,6 +20,7 @@ export default function ProjectPage({ params }: PageProps) {
   const queryClient = useQueryClient();
 
   const [activeTask, setActiveTask] = useState<ApiTask | null>(null);
+  const [showEditProject, setShowEditProject] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newColumn, setNewColumn] = useState<TaskStatus>("todo");
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +48,9 @@ export default function ProjectPage({ params }: PageProps) {
   });
 
   const project = data?.project;
+  const myRole = project?.memberships.find(
+    (m) => m.user.id === getStoredUser()?.id
+  )?.role;
   const tasksByStatus: Record<TaskStatus, ApiTask[]> = {
     todo: [],
     in_progress: [],
@@ -91,6 +96,15 @@ export default function ProjectPage({ params }: PageProps) {
                   owner: {project.owner.name} · {project.memberships.length} members
                 </p>
               </div>
+              {myRole === "admin" && (
+                <button
+                  type="button"
+                  onClick={() => setShowEditProject(true)}
+                  className="text-sm px-4 py-2 rounded-md border border-border hover:border-accent shrink-0"
+                >
+                  edit project
+                </button>
+              )}
             </div>
 
             <section className="bg-surface border border-border rounded-lg p-4 mb-6">
@@ -167,6 +181,14 @@ export default function ProjectPage({ params }: PageProps) {
           </>
         )}
       </main>
+
+      {showEditProject && project && (
+        <ProjectDetail
+          project={project}
+          projectId={id}
+          onClose={() => setShowEditProject(false)}
+        />
+      )}
 
       {activeTask && project && (
         <TaskDetail
