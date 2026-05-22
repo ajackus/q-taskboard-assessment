@@ -165,3 +165,8 @@ Response includes `airtableUrl` to open the base; partial failures return `faile
 - Tailwind CSS 3
 - bcryptjs + jsonwebtoken
 - Vitest 2 (testing)
+
+
+## Recording:
+https://drive.google.com/file/d/1LYOpHk7pRBzs3Fuv_9zlyKKMQqB-bFuK/view?usp=sharing
+https://drive.google.com/file/d/1gK6H4CxXHOG2oY6NyJCWx5IkTheporhS/view?usp=sharing
