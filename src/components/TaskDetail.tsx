@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api-client";
-import type { ApiTask, ApiProjectMember, TaskStatus } from "@/types";
+import { apiFetch, getStoredUser } from "@/lib/api-client";
+import type { ApiTask, ApiProjectMember, TaskStatus, Role } from "@/types";
 import { STATUS_LABELS, STATUS_ORDER } from "@/types";
+import { TaskComments } from "./TaskComments";
 
 type Props = {
   task: ApiTask;
@@ -21,6 +22,12 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
   const [assigneeId, setAssigneeId] = useState<string>(task.assigneeId ?? "");
   const [error, setError] = useState<string | null>(null);
 
+  const currentUser = getStoredUser();
+  const currentMembership = currentUser
+    ? members.find((m) => m.user.id === currentUser.id)
+    : undefined;
+  const currentUserRole: Role | null = currentMembership?.role ?? null;
+
   const updateTask = useMutation({
     mutationFn: (input: Partial<ApiTask>) =>
       apiFetch<{ task: ApiTask }>(`/api/tasks/${task.id}`, {
@@ -29,6 +36,7 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project-activities", projectId] });
       onClose();
     },
     onError: (err) => setError(err instanceof Error ? err.message : "save failed"),
@@ -39,6 +47,7 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
       apiFetch<{ ok: true }>(`/api/tasks/${task.id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project-activities", projectId] });
       onClose();
     },
     onError: (err) => setError(err instanceof Error ? err.message : "delete failed"),
@@ -60,7 +69,7 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl bg-surface border border-border rounded-lg p-6"
+        className="w-full max-w-xl bg-surface border border-border rounded-lg p-6 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
@@ -153,6 +162,8 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
             </button>
           </div>
         </div>
+
+        <TaskComments taskId={task.id} currentUserRole={currentUserRole} />
       </div>
     </div>
   );
