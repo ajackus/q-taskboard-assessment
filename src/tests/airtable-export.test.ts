@@ -50,15 +50,14 @@ describe("taskToAirtableFields", () => {
     expect(fields[TASKBOARD_ID_FIELD]).toBe("task_1");
     expect(fields.Title).toBe("Ship feature");
     expect(fields["Project Name"]).toBe("Q3 Launch");
-    expect(fields["Assignee Name"]).toBe("Meera");
-    expect(fields.Assignee).toEqual({ email: "meera@taskboard.dev" });
+    expect(fields.Assignee).toBe("Meera");
     expect(fields[TASK_CREATED_AT_FIELD]).toBe("2024-01-01T12:00:00.000Z");
     expect(fields[TASK_UPDATED_AT_FIELD]).toBe("2024-01-02T15:30:00.000Z");
     expect(fields["Created At"]).toBeUndefined();
     expect(fields["Updated At"]).toBeUndefined();
   });
 
-  it("omits Assignee collaborator when unassigned", () => {
+  it("sets Assignee to empty string when unassigned", () => {
     const fields = taskToAirtableFields(
       {
         id: "t1",
@@ -72,7 +71,7 @@ describe("taskToAirtableFields", () => {
       },
       "Proj"
     );
-    expect(fields.Assignee).toBeUndefined();
+    expect(fields.Assignee).toBe("");
   });
 });
 
