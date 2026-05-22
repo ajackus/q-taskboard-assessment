@@ -93,6 +93,7 @@ curl -H "Authorization: Bearer <token>" http://localhost:3000/api/projects
 - `POST /api/auth/register` — Create account
 - `POST /api/auth/login` — Sign in, get JWT
 - `GET /api/users/me` — Current user (authenticated)
+- `GET /api/users` — List users for member assignment (authenticated)
 
 ### Projects
 - `GET /api/projects` — List projects you're a member of (authenticated)
@@ -100,12 +101,58 @@ curl -H "Authorization: Bearer <token>" http://localhost:3000/api/projects
 - `GET /api/projects/:id` — Project detail with tasks and members (authenticated)
 - `PATCH /api/projects/:id` — Update project (authenticated)
 - `DELETE /api/projects/:id` — Delete project (authenticated)
+- `POST /api/projects/:id/members` — Add member with role `member` or `viewer` (admin only)
+- `PATCH /api/projects/:id/members/:membershipId` — Change member/viewer role (admin only)
+- `DELETE /api/projects/:id/members/:membershipId` — Remove member/viewer (admin only)
 
 ### Tasks
 - `GET /api/projects/:id/tasks` — List tasks in a project (authenticated)
 - `POST /api/projects/:id/tasks` — Create a task (authenticated)
 - `PATCH /api/tasks/:id` — Update a task (authenticated)
 - `DELETE /api/tasks/:id` — Delete a task (authenticated)
+- `GET /api/tasks/:id/comments` — List task comments chronologically (project members, including viewers)
+- `POST /api/tasks/:id/comments` — Post a comment (admin and member only; append-only)
+- `POST /api/projects/:id/export/airtable` — Export all project tasks to Airtable (admin and member only)
+
+## Airtable export
+
+Configure a real Airtable base, then export tasks from the project detail page (**export to Airtable**). Re-running export upserts by `TaskBoard ID` (no duplicate rows).
+
+### Environment variables
+
+Copy from `.env.example` into `.env` (and restart the app):
+
+| Variable | Description |
+|----------|-------------|
+| `AIRTABLE_API_KEY` | [Personal access token](https://airtable.com/create/tokens) with `data.records:read` and `data.records:write` on your base |
+| `AIRTABLE_BASE_ID` | Base ID from the URL (`appXXXXXXXX`) |
+| `AIRTABLE_TABLE_NAME` | Table name (default: `Tasks`) |
+
+### Required Airtable columns
+
+Create a table with these field names (exact spelling):
+
+| Field | Type |
+|-------|------|
+| TaskBoard ID | Single line text |
+| Title | Single line text |
+| Description | Long text |
+| Status | Single line text (or Single select) |
+| Assignee Name | Single line text |
+| Assignee | Collaborator (matched by workspace user email; omit when unassigned) |
+| Position | Number |
+| Project Name | Single line text |
+| Task Created At | Date (include time, ISO 8601) — do not use a computed "Created At" field |
+| Task Updated At | Date (include time, ISO 8601) — do not use a computed "Updated At" field |
+
+### API example
+
+```bash
+curl -X POST http://localhost:3000/api/projects/<projectId>/export/airtable \
+  -H "Authorization: Bearer <token>"
+```
+
+Response includes `airtableUrl` to open the base; partial failures return `failed[]` without aborting the rest.
 
 ## Tech Stack
 
@@ -118,3 +165,8 @@ curl -H "Authorization: Bearer <token>" http://localhost:3000/api/projects
 - Tailwind CSS 3
 - bcryptjs + jsonwebtoken
 - Vitest 2 (testing)
+
+
+## Recording:
+https://drive.google.com/file/d/1LYOpHk7pRBzs3Fuv_9zlyKKMQqB-bFuK/view?usp=sharing
+https://drive.google.com/file/d/1gK6H4CxXHOG2oY6NyJCWx5IkTheporhS/view?usp=sharing

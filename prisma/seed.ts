@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("seeding…");
 
+  await prisma.taskComment.deleteMany();
   await prisma.task.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.project.deleteMany();
@@ -81,8 +82,9 @@ async function main() {
     { title: "QA the new signup flow end-to-end", status: TaskStatus.todo, assignee: arjun.id, position: 6 },
   ];
 
+  let demoTaskId: string | null = null;
   for (const t of launchTasks) {
-    await prisma.task.create({
+    const task = await prisma.task.create({
       data: {
         projectId: launch.id,
         title: t.title,
@@ -92,6 +94,24 @@ async function main() {
         createdById: meera.id,
         position: t.position,
       },
+    });
+    if (t.title === "Record demo video") demoTaskId = task.id;
+  }
+
+  if (demoTaskId) {
+    await prisma.taskComment.createMany({
+      data: [
+        {
+          taskId: demoTaskId,
+          authorId: meera.id,
+          body: "Please include the new dashboard in the recording.",
+        },
+        {
+          taskId: demoTaskId,
+          authorId: kavya.id,
+          body: "Script draft is ready — will share by EOD.",
+        },
+      ],
     });
   }
 

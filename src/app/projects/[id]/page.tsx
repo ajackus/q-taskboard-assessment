@@ -4,14 +4,22 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, getToken } from "@/lib/api-client";
+import { apiFetch, getStoredUser, getToken } from "@/lib/api-client";
 import { Header } from "@/components/Header";
 import { StatusColumn } from "@/components/StatusColumn";
+import { ProjectDetail } from "@/components/ProjectDetail";
 import { TaskDetail } from "@/components/TaskDetail";
 import type { ApiProjectDetail, ApiTask, TaskStatus } from "@/types";
 import { STATUS_ORDER } from "@/types";
 
 type PageProps = { params: Promise<{ id: string }> };
+
+type ExportResult = {
+  total: number;
+  succeeded: number;
+  failed: { taskId: string; title: string; error: string }[];
+  airtableUrl: string;
+};
 
 export default function ProjectPage({ params }: PageProps) {
   const router = useRouter();
@@ -19,9 +27,12 @@ export default function ProjectPage({ params }: PageProps) {
   const queryClient = useQueryClient();
 
   const [activeTask, setActiveTask] = useState<ApiTask | null>(null);
+  const [showEditProject, setShowEditProject] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newColumn, setNewColumn] = useState<TaskStatus>("todo");
   const [error, setError] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportSummary, setExportSummary] = useState<string | null>(null);
 
   useEffect(() => {
     if (!getToken()) router.replace("/login");
@@ -30,6 +41,24 @@ export default function ProjectPage({ params }: PageProps) {
   const { data, isLoading, error: queryError } = useQuery({
     queryKey: ["project", id],
     queryFn: () => apiFetch<{ project: ApiProjectDetail }>(`/api/projects/${id}`),
+  });
+
+  const exportAirtable = useMutation({
+    mutationFn: () =>
+      apiFetch<ExportResult>(`/api/projects/${id}/export/airtable`, {
+        method: "POST",
+      }),
+    onSuccess: (result) => {
+      setExportError(null);
+      setExportSummary(
+        `exported ${result.succeeded} of ${result.total} task${result.total === 1 ? "" : "s"} to Airtable`
+      );
+      window.open(result.airtableUrl, "_blank");
+    },
+    onError: (err) => {
+      setExportSummary(null);
+      setExportError(err instanceof Error ? err.message : "export failed");
+    },
   });
 
   const createTask = useMutation({
@@ -46,6 +75,9 @@ export default function ProjectPage({ params }: PageProps) {
   });
 
   const project = data?.project;
+  const myRole = project?.memberships.find(
+    (m) => m.user.id === getStoredUser()?.id
+  )?.role;
   const tasksByStatus: Record<TaskStatus, ApiTask[]> = {
     todo: [],
     in_progress: [],
@@ -91,7 +123,50 @@ export default function ProjectPage({ params }: PageProps) {
                   owner: {project.owner.name} · {project.memberships.length} members
                 </p>
               </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {(myRole === "admin" || myRole === "member") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExportError(null);
+                      setExportSummary(null);
+                      exportAirtable.mutate();
+                    }}
+                    disabled={exportAirtable.isPending}
+                    className="text-sm px-4 py-2 rounded-md border border-border hover:border-accent disabled:opacity-50"
+                  >
+                    {exportAirtable.isPending ? "exporting…" : "export to Airtable"}
+                  </button>
+                )}
+                {myRole === "admin" && (
+                  <button
+                    type="button"
+                    onClick={() => setShowEditProject(true)}
+                    className="text-sm px-4 py-2 rounded-md border border-border hover:border-accent"
+                  >
+                    edit project
+                  </button>
+                )}
+              </div>
             </div>
+
+            {exportSummary && (
+              <p className="text-sm text-muted -mt-4 mb-6">{exportSummary}</p>
+            )}
+            {exportError && (
+              <p className="text-sm text-red-400 -mt-4 mb-6" role="alert">
+                {exportError}
+              </p>
+            )}
+            {exportAirtable.data && exportAirtable.data.failed.length > 0 && (
+              <ul className="text-sm text-red-400 -mt-4 mb-6 list-disc list-inside">
+                {exportAirtable.data.failed.map((f) => (
+                  <li key={f.taskId}>
+                    {f.title}: {f.error}
+                  </li>
+                ))}
+              </ul>
+            )}
 
             <section className="bg-surface border border-border rounded-lg p-4 mb-6">
               <h2 className="text-sm font-medium mb-3">add a task</h2>
@@ -168,11 +243,20 @@ export default function ProjectPage({ params }: PageProps) {
         )}
       </main>
 
+      {showEditProject && project && (
+        <ProjectDetail
+          project={project}
+          projectId={id}
+          onClose={() => setShowEditProject(false)}
+        />
+      )}
+
       {activeTask && project && (
         <TaskDetail
           task={activeTask}
           projectId={id}
           members={project.memberships}
+          canPostComments={myRole === "admin" || myRole === "member"}
           onClose={() => setActiveTask(null)}
         />
       )}
