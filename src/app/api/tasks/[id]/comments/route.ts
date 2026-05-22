@@ -10,6 +10,7 @@ import {
   canEditTasks,
 } from "@/lib/auth";
 import { createCommentSchema } from "@/schemas/comment";
+import { recordActivity } from "@/lib/activity";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -74,15 +75,35 @@ export async function POST(req: NextRequest, { params }: Params) {
     return forbidden("viewers cannot post comments");
   }
 
-  const comment = await prisma.comment.create({
-    data: {
+  const taskRecord = await prisma.task.findUnique({
+    where: { id: taskId },
+    select: { title: true },
+  });
+
+  const comment = await prisma.$transaction(async (tx) => {
+    const created = await tx.comment.create({
+      data: {
+        taskId,
+        authorId: user.id,
+        body: parsed.data.body,
+      },
+      include: {
+        author: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    await recordActivity(tx, {
+      projectId: task.projectId,
+      actorId: user.id,
+      type: "comment_added",
       taskId,
-      authorId: user.id,
-      body: parsed.data.body,
-    },
-    include: {
-      author: { select: { id: true, name: true, email: true } },
-    },
+      metadata: {
+        title: taskRecord?.title ?? "",
+        commentId: created.id,
+      },
+    });
+
+    return created;
   });
 
   return NextResponse.json({ comment }, { status: 201 });

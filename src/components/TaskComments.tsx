@@ -44,6 +44,7 @@ export function TaskComments({ taskId, currentUserRole }: Props) {
       setBody("");
       setError(null);
       queryClient.invalidateQueries({ queryKey: ["task-comments", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["project-activities"] });
     },
     onError: (err) =>
       setError(err instanceof Error ? err.message : "failed to post comment"),
