@@ -112,6 +112,46 @@ curl -H "Authorization: Bearer <token>" http://localhost:3000/api/projects
 - `DELETE /api/tasks/:id` — Delete a task (authenticated)
 - `GET /api/tasks/:id/comments` — List task comments chronologically (project members, including viewers)
 - `POST /api/tasks/:id/comments` — Post a comment (admin and member only; append-only)
+- `POST /api/projects/:id/export/airtable` — Export all project tasks to Airtable (admin and member only)
+
+## Airtable export
+
+Configure a real Airtable base, then export tasks from the project detail page (**export to Airtable**). Re-running export upserts by `TaskBoard ID` (no duplicate rows).
+
+### Environment variables
+
+Copy from `.env.example` into `.env` (and restart the app):
+
+| Variable | Description |
+|----------|-------------|
+| `AIRTABLE_API_KEY` | [Personal access token](https://airtable.com/create/tokens) with `data.records:read` and `data.records:write` on your base |
+| `AIRTABLE_BASE_ID` | Base ID from the URL (`appXXXXXXXX`) |
+| `AIRTABLE_TABLE_NAME` | Table name (default: `Tasks`) |
+
+### Required Airtable columns
+
+Create a table with these field names (exact spelling):
+
+| Field | Type |
+|-------|------|
+| TaskBoard ID | Single line text |
+| Title | Single line text |
+| Description | Long text |
+| Status | Single line text (or Single select) |
+| Assignee | Single line text |
+| Position | Number |
+| Project Name | Single line text |
+| Created At | Single line text |
+| Updated At | Single line text |
+
+### API example
+
+```bash
+curl -X POST http://localhost:3000/api/projects/<projectId>/export/airtable \
+  -H "Authorization: Bearer <token>"
+```
+
+Response includes `airtableUrl` to open the base; partial failures return `failed[]` without aborting the rest.
 
 ## Tech Stack
 

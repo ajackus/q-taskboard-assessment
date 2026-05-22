@@ -20,11 +20,11 @@ async function getTaskWithMembership(userId: string, taskId: string) {
     where: { id: taskId },
     select: { id: true, projectId: true },
   });
-  if (!task) return { error: notFound("task not found") as const };
+  if (!task) return { error: notFound("task not found") };
 
   const membership = await getProjectMembership(userId, task.projectId);
   if (!membership) {
-    return { error: forbidden("you are not a member of this project") as const };
+    return { error: forbidden("you are not a member of this project") };
   }
 
   return { task, membership };
