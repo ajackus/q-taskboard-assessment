@@ -21,6 +21,15 @@ export type ApiTask = {
   assignee?: ApiUser | null;
 };
 
+export type ApiComment = {
+  id: string;
+  taskId: string;
+  authorId: string;
+  body: string;
+  createdAt: string;
+  author: ApiUser;
+};
+
 export type ApiProjectMember = {
   id: string;
   role: Role;
@@ -47,3 +56,26 @@ export const STATUS_LABELS: Record<TaskStatus, string> = {
 };
 
 export const STATUS_ORDER: TaskStatus[] = ["todo", "in_progress", "review", "done"];
+
+export type ExportResult = {
+  success: boolean;
+  totalTasks: number;
+  exported: number;
+  failed: number;
+  errors: Array<{ taskId: string; title: string; error: string }>;
+  message: string;
+};
+
+export type AirtableTaskRecord = {
+  fields: {
+    Title: string;
+    Description?: string;
+    Status: string;
+    Assignee?: string;
+    "Created By"?: string;
+    Position: number;
+    "Created At": string;
+    "Updated At": string;
+    "Project ID": string;
+  };
+};
