@@ -12,6 +12,12 @@ describe("Airtable Export API", () => {
 
   beforeAll(async () => {
     airtable.__reset();
+    
+    // Clean up database before running test
+    await prisma.comment.deleteMany().catch(() => {});
+    await prisma.task.deleteMany();
+    await prisma.project.deleteMany();
+    await prisma.user.deleteMany();
 
     const member = await prisma.user.create({
       data: { email: "exportmember@c.com", name: "Member", passwordHash: "dummy" },
