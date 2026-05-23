@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, getStoredUser } from "@/lib/api-client";
 import type { ApiTask, ApiProjectMember, TaskStatus } from "@/types";
 import { STATUS_LABELS, STATUS_ORDER } from "@/types";
+import { TaskComments } from "./TaskComments";
 
 type Props = {
   task: ApiTask;
@@ -20,6 +21,10 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
   const [status, setStatus] = useState<TaskStatus>(task.status);
   const [assigneeId, setAssigneeId] = useState<string>(task.assigneeId ?? "");
   const [error, setError] = useState<string | null>(null);
+
+  const currentUser = getStoredUser();
+  const currentMembership = members.find(m => m.user.id === currentUser?.id);
+  const canPost = !!currentMembership && currentMembership.role !== "viewer";
 
   const updateTask = useMutation({
     mutationFn: (input: Partial<ApiTask>) =>
@@ -129,7 +134,7 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
           </p>
         )}
 
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 mb-4">
           <button
             onClick={() => deleteTask.mutate()}
             disabled={deleteTask.isPending}
@@ -153,6 +158,8 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
             </button>
           </div>
         </div>
+        
+        <TaskComments taskId={task.id} canPost={canPost} />
       </div>
     </div>
   );

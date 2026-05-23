@@ -118,3 +118,6 @@ curl -H "Authorization: Bearer <token>" http://localhost:3000/api/projects
 - Tailwind CSS 3
 - bcryptjs + jsonwebtoken
 - Vitest 2 (testing)
+
+## Loom video for walkthrough
+Loom video of task link: https://www.loom.com/share/19bd2c9647f24b5492d1c6116aa63fc0  
