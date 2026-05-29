@@ -19,6 +19,7 @@ describe("Airtable Export Integration", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     airtable.__reset();
+    vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   const mockProject = {

@@ -9,6 +9,7 @@ vi.mock("../lib/prisma", () => ({
   prisma: {
     task: { findUnique: vi.fn() },
     comment: { findMany: vi.fn(), create: vi.fn() },
+    activity: { create: vi.fn() },
   },
 }));
 
