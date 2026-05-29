@@ -77,17 +77,3 @@ curl -X POST http://localhost:3000/api/projects/TARGET-PROJECT-ID/tasks \
   -H "Content-Type: application/json" \
   -d '{"title": "New Task", "assigneeId": "RANDOM-NON-MEMBER-USER-ID"}'
 ```
-
-### 5. Missing Pagination on Project Detail Tasks
-File: src/app/api/projects/[id]/route.ts
-Line: 32-38
-Severity: Medium
-Category: Performance
-Description: The project detail endpoint fetches the project along with all of its tasks in a single query. There is no pagination or limit applied.
-Impact: As a project grows, the payload size will become massive, significantly slowing down the API response and browser rendering, eventually causing the page to become unusable.
-Recommended Fix: Implement pagination (e.g., cursor-based or offset-based limit/skip) for the tasks, or lazy-load them in separate, chunked requests via the `/tasks` endpoint instead of nesting them in the main project query.
-Proof (curl):
-```bash
-curl -X GET http://localhost:3000/api/projects/TARGET-PROJECT-ID \
-  -H "Authorization: Bearer <token>"
-```

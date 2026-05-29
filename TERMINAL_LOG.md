@@ -53,3 +53,35 @@ curl -X PATCH http://localhost:3000/api/tasks/cmppkx4wz0001n4f8ecwa4jfw \
 # Result (403 Forbidden - Access properly denied):
 {"error":"you are not a member of this project"}
 ```
+
+## Part 3a/3b - Feature Demos
+
+- **3a**: [View Screenshot](https://prnt.sc/LtVnCtxLXvCo)
+- **3b**: [View Screenshot](https://prnt.sc/N_hRI6JDX6M0)
+
+## Part 3c - Airtable Export Demo
+
+- **First Run (Screenshot)**: [View Screenshot](https://prnt.sc/cS1ATW7vXNOI)
+- **Second run to show uniqueness (no duplicates created)**: [Watch on Loom](https://www.loom.com/share/dbdd44f6c03d43a6b73f4b65efa45c44)
+
+## Final Test Run
+
+```bash
+> npm test
+
+> taskboard@0.1.0 test
+> vitest run
+
+ ✓ src/tests/activity.test.ts (2)           
+ ✓ src/tests/airtable.test.ts (8)                       
+ ✓ src/tests/auth.test.ts (2)                                    
+ ✓ src/tests/comments.test.ts (3)                          
+ ✓ src/tests/schemas.test.ts (7)                                                                   
+ ✓ src/tests/TaskCard.test.tsx (3)                                    
+ ✓ src/tests/tasks-route.test.ts (3)                    
+                                                                 
+ Test Files  7 passed (7)                                  
+      Tests  28 passed (28)                      
+   Start at  19:54:06                                                 
+   Duration  1.92s (transform 415ms, setup 1.12s, collect 1.49s, tests 331ms, environment 5.00s, prepare 879ms)
+```
