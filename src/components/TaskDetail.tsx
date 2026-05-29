@@ -45,6 +45,7 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
     onSuccess: () => {
       setNewComment("");
       queryClient.invalidateQueries({ queryKey: ["task", task.id, "comments"] });
+      queryClient.invalidateQueries({ queryKey: ["project", projectId, "activity"] });
     },
     onError: (err) => setError(err instanceof Error ? err.message : "failed to post comment"),
   });
@@ -57,6 +58,7 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project", projectId, "activity"] });
       onClose();
     },
     onError: (err) => setError(err instanceof Error ? err.message : "save failed"),
@@ -67,6 +69,7 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
       apiFetch<{ ok: true }>(`/api/tasks/${task.id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project", projectId, "activity"] });
       onClose();
     },
     onError: (err) => setError(err instanceof Error ? err.message : "delete failed"),

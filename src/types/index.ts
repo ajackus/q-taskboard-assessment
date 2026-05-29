@@ -30,6 +30,16 @@ export type ApiComment = {
   author: ApiUser;
 };
 
+export type ApiActivity = {
+  id: string;
+  projectId: string;
+  userId: string;
+  action: string;
+  target: string;
+  createdAt: string;
+  user: ApiUser;
+};
+
 export type ApiProjectMember = {
   id: string;
   role: Role;

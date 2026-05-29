@@ -9,6 +9,7 @@ import {
   getProjectMembership,
   canEditTasks,
 } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 import { updateTaskSchema } from "@/schemas/task";
 
 type Params = { params: Promise<{ id: string }> };
@@ -39,6 +40,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       assignee: { select: { id: true, name: true, email: true } },
     },
   });
+
+  if (parsed.data.status && parsed.data.status !== existing.status) {
+    await logActivity(existing.projectId, user.id, "changed status to " + parsed.data.status, task.title);
+  }
+  if (parsed.data.assigneeId !== undefined && parsed.data.assigneeId !== existing.assigneeId) {
+    const action = parsed.data.assigneeId ? "reassigned" : "unassigned";
+    await logActivity(existing.projectId, user.id, action, task.title);
+  }
 
   return NextResponse.json({ task });
 }

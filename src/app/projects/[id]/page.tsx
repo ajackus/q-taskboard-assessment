@@ -8,7 +8,7 @@ import { apiFetch, getToken } from "@/lib/api-client";
 import { Header } from "@/components/Header";
 import { StatusColumn } from "@/components/StatusColumn";
 import { TaskDetail } from "@/components/TaskDetail";
-import type { ApiProjectDetail, ApiTask, TaskStatus } from "@/types";
+import type { ApiProjectDetail, ApiTask, TaskStatus, ApiActivity } from "@/types";
 import { STATUS_ORDER } from "@/types";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -32,6 +32,11 @@ export default function ProjectPage({ params }: PageProps) {
     queryFn: () => apiFetch<{ project: ApiProjectDetail }>(`/api/projects/${id}`),
   });
 
+  const { data: activityData, isLoading: isLoadingActivity } = useQuery({
+    queryKey: ["project", id, "activity"],
+    queryFn: () => apiFetch<{ activities: ApiActivity[] }>(`/api/projects/${id}/activity`),
+  });
+
   const createTask = useMutation({
     mutationFn: (input: { title: string; status: TaskStatus }) =>
       apiFetch<{ task: ApiTask }>(`/api/projects/${id}/tasks`, {
@@ -41,6 +46,7 @@ export default function ProjectPage({ params }: PageProps) {
     onSuccess: () => {
       setNewTitle("");
       queryClient.invalidateQueries({ queryKey: ["project", id] });
+      queryClient.invalidateQueries({ queryKey: ["project", id, "activity"] });
     },
     onError: (err) => setError(err instanceof Error ? err.message : "create failed"),
   });
@@ -163,6 +169,32 @@ export default function ProjectPage({ params }: PageProps) {
                   </li>
                 ))}
               </ul>
+            </section>
+
+            <section className="mt-10">
+              <h2 className="text-sm font-medium mb-3">recent activity</h2>
+              <div className="bg-surface border border-border rounded-lg p-4 max-h-80 overflow-y-auto">
+                {isLoadingActivity ? (
+                  <p className="text-xs text-muted">loading activity...</p>
+                ) : activityData?.activities.length === 0 ? (
+                  <p className="text-xs text-muted">no recent activity.</p>
+                ) : (
+                  <ul className="space-y-4">
+                    {activityData?.activities.map((act) => (
+                      <li key={act.id} className="flex gap-3 text-sm">
+                        <div className="flex-1">
+                          <span className="font-medium">{act.user.name}</span>{" "}
+                          <span className="text-muted">{act.action}</span>{" "}
+                          <span className="font-medium">"{act.target}"</span>
+                        </div>
+                        <div className="text-xs text-muted">
+                          {new Date(act.createdAt).toLocaleString()}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </section>
           </>
         )}

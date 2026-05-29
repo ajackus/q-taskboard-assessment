@@ -9,6 +9,7 @@ import {
   getProjectMembership,
   canEditTasks,
 } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 import { createCommentSchema } from "@/schemas/comment";
 
 type Params = { params: Promise<{ id: string }> };
@@ -66,6 +67,8 @@ export async function POST(req: NextRequest, { params }: Params) {
       author: { select: { id: true, name: true, email: true } },
     },
   });
+
+  await logActivity(task.projectId, user.id, "commented on", task.title);
 
   return NextResponse.json({ comment }, { status: 201 });
 }
