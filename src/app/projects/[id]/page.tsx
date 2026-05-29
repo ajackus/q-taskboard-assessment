@@ -8,7 +8,7 @@ import { apiFetch, getToken } from "@/lib/api-client";
 import { Header } from "@/components/Header";
 import { StatusColumn } from "@/components/StatusColumn";
 import { TaskDetail } from "@/components/TaskDetail";
-import type { ApiProjectDetail, ApiTask, TaskStatus } from "@/types";
+import type { ApiProjectDetail, ApiTask, TaskStatus, ApiActivity } from "@/types";
 import { STATUS_ORDER } from "@/types";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -22,6 +22,7 @@ export default function ProjectPage({ params }: PageProps) {
   const [newTitle, setNewTitle] = useState("");
   const [newColumn, setNewColumn] = useState<TaskStatus>("todo");
   const [error, setError] = useState<string | null>(null);
+  const [exportMessage, setExportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     if (!getToken()) router.replace("/login");
@@ -30,6 +31,11 @@ export default function ProjectPage({ params }: PageProps) {
   const { data, isLoading, error: queryError } = useQuery({
     queryKey: ["project", id],
     queryFn: () => apiFetch<{ project: ApiProjectDetail }>(`/api/projects/${id}`),
+  });
+
+  const { data: activityData, isLoading: isLoadingActivity } = useQuery({
+    queryKey: ["project", id, "activity"],
+    queryFn: () => apiFetch<{ activities: ApiActivity[] }>(`/api/projects/${id}/activity`),
   });
 
   const createTask = useMutation({
@@ -41,8 +47,30 @@ export default function ProjectPage({ params }: PageProps) {
     onSuccess: () => {
       setNewTitle("");
       queryClient.invalidateQueries({ queryKey: ["project", id] });
+      queryClient.invalidateQueries({ queryKey: ["project", id, "activity"] });
     },
     onError: (err) => setError(err instanceof Error ? err.message : "create failed"),
+  });
+
+  const exportToAirtable = useMutation({
+    mutationFn: () =>
+      apiFetch<{ success: boolean; exported: number; updated: number; failed: number }>(`/api/projects/${id}/export-airtable`, {
+        method: "POST",
+      }),
+    onSuccess: (res) => {
+      setExportMessage({
+        type: 'success',
+        text: `Export summary: ${res.exported} exported, ${res.updated} updated, ${res.failed} failed.`,
+      });
+      setTimeout(() => setExportMessage(null), 5000);
+    },
+    onError: (err) => {
+      setExportMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : "Export failed",
+      });
+      setTimeout(() => setExportMessage(null), 5000);
+    },
   });
 
   const project = data?.project;
@@ -70,6 +98,18 @@ export default function ProjectPage({ params }: PageProps) {
           ← all projects
         </Link>
 
+        {exportMessage && (
+          <div
+            className={`mt-4 p-3 rounded-md text-sm border ${
+              exportMessage.type === 'success'
+                ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                : 'bg-red-500/10 border-red-500/20 text-red-400'
+            }`}
+          >
+            {exportMessage.text}
+          </div>
+        )}
+
         {isLoading && <p className="text-muted text-sm mt-6">loading…</p>}
         {queryError && (
           <p className="text-sm text-red-400 mt-6">
@@ -90,6 +130,15 @@ export default function ProjectPage({ params }: PageProps) {
                 <p className="text-xs text-muted mt-2">
                   owner: {project.owner.name} · {project.memberships.length} members
                 </p>
+              </div>
+              <div>
+                <button
+                  onClick={() => exportToAirtable.mutate()}
+                  disabled={exportToAirtable.isPending}
+                  className="bg-accent hover:bg-indigo-500 text-white text-sm font-medium rounded-md px-4 py-2 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {exportToAirtable.isPending ? "Exporting..." : "Export to Airtable"}
+                </button>
               </div>
             </div>
 
@@ -163,6 +212,32 @@ export default function ProjectPage({ params }: PageProps) {
                   </li>
                 ))}
               </ul>
+            </section>
+
+            <section className="mt-10">
+              <h2 className="text-sm font-medium mb-3">recent activity</h2>
+              <div className="bg-surface border border-border rounded-lg p-4 max-h-80 overflow-y-auto">
+                {isLoadingActivity ? (
+                  <p className="text-xs text-muted">loading activity...</p>
+                ) : activityData?.activities.length === 0 ? (
+                  <p className="text-xs text-muted">no recent activity.</p>
+                ) : (
+                  <ul className="space-y-4">
+                    {activityData?.activities.map((act) => (
+                      <li key={act.id} className="flex gap-3 text-sm">
+                        <div className="flex-1">
+                          <span className="font-medium">{act.user.name}</span>{" "}
+                          <span className="text-muted">{act.action}</span>{" "}
+                          <span className="font-medium">"{act.target}"</span>
+                        </div>
+                        <div className="text-xs text-muted">
+                          {new Date(act.createdAt).toLocaleString()}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </section>
           </>
         )}

@@ -9,6 +9,7 @@ import {
   getProjectMembership,
   canEditTasks,
 } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 import { updateTaskSchema } from "@/schemas/task";
 
 type Params = { params: Promise<{ id: string }> };
@@ -26,6 +27,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const existing = await prisma.task.findUnique({ where: { id } });
   if (!existing) return notFound("task not found");
 
+  const membership = await getProjectMembership(user.id, existing.projectId);
+  if (!membership) return forbidden("you are not a member of this project");
+  if (!canEditTasks(membership.role)) {
+    return forbidden("viewers cannot edit tasks");
+  }
+
   const task = await prisma.task.update({
     where: { id },
     data: parsed.data,
@@ -33,6 +40,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       assignee: { select: { id: true, name: true, email: true } },
     },
   });
+
+  if (parsed.data.status && parsed.data.status !== existing.status) {
+    await logActivity(existing.projectId, user.id, "changed status to " + parsed.data.status, task.title);
+  }
+  if (parsed.data.assigneeId !== undefined && parsed.data.assigneeId !== existing.assigneeId) {
+    const action = parsed.data.assigneeId ? "reassigned" : "unassigned";
+    await logActivity(existing.projectId, user.id, action, task.title);
+  }
 
   return NextResponse.json({ task });
 }
