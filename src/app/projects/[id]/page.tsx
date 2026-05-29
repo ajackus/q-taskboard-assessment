@@ -22,6 +22,7 @@ export default function ProjectPage({ params }: PageProps) {
   const [newTitle, setNewTitle] = useState("");
   const [newColumn, setNewColumn] = useState<TaskStatus>("todo");
   const [error, setError] = useState<string | null>(null);
+  const [exportMessage, setExportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     if (!getToken()) router.replace("/login");
@@ -51,6 +52,27 @@ export default function ProjectPage({ params }: PageProps) {
     onError: (err) => setError(err instanceof Error ? err.message : "create failed"),
   });
 
+  const exportToAirtable = useMutation({
+    mutationFn: () =>
+      apiFetch<{ success: boolean; exported: number; updated: number; failed: number }>(`/api/projects/${id}/export-airtable`, {
+        method: "POST",
+      }),
+    onSuccess: (res) => {
+      setExportMessage({
+        type: 'success',
+        text: `Export summary: ${res.exported} exported, ${res.updated} updated, ${res.failed} failed.`,
+      });
+      setTimeout(() => setExportMessage(null), 5000);
+    },
+    onError: (err) => {
+      setExportMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : "Export failed",
+      });
+      setTimeout(() => setExportMessage(null), 5000);
+    },
+  });
+
   const project = data?.project;
   const tasksByStatus: Record<TaskStatus, ApiTask[]> = {
     todo: [],
@@ -76,6 +98,18 @@ export default function ProjectPage({ params }: PageProps) {
           ← all projects
         </Link>
 
+        {exportMessage && (
+          <div
+            className={`mt-4 p-3 rounded-md text-sm border ${
+              exportMessage.type === 'success'
+                ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                : 'bg-red-500/10 border-red-500/20 text-red-400'
+            }`}
+          >
+            {exportMessage.text}
+          </div>
+        )}
+
         {isLoading && <p className="text-muted text-sm mt-6">loading…</p>}
         {queryError && (
           <p className="text-sm text-red-400 mt-6">
@@ -96,6 +130,15 @@ export default function ProjectPage({ params }: PageProps) {
                 <p className="text-xs text-muted mt-2">
                   owner: {project.owner.name} · {project.memberships.length} members
                 </p>
+              </div>
+              <div>
+                <button
+                  onClick={() => exportToAirtable.mutate()}
+                  disabled={exportToAirtable.isPending}
+                  className="bg-accent hover:bg-indigo-500 text-white text-sm font-medium rounded-md px-4 py-2 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {exportToAirtable.isPending ? "Exporting..." : "Export to Airtable"}
+                </button>
               </div>
             </div>
 

@@ -72,7 +72,7 @@ describe("PATCH /api/tasks/[id]", () => {
     vi.mocked(auth.getProjectMembership).mockResolvedValue({ role: "admin" });
     vi.mocked(auth.canEditTasks).mockReturnValue(true);
     
-    const updatedTask = { id: "task-1", projectId: "proj-1", title: "New Title", description: null, status: "todo", assigneeId: null, createdById: "user-2", position: 0, createdAt: new Date(), updatedAt: new Date() };
+    const updatedTask = { id: "task-1", projectId: "proj-1", title: "New Title", description: null, status: "todo" as any, assigneeId: null, createdById: "user-2", position: 0, createdAt: new Date(), updatedAt: new Date() };
     vi.mocked(prisma.task.update).mockResolvedValue(updatedTask);
 
     // Provide a mocked Response for NextResponse.json inside the handler
