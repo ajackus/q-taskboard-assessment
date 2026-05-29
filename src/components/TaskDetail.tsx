@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
-import type { ApiTask, ApiProjectMember, TaskStatus } from "@/types";
+import type { ApiTask, ApiProjectMember, TaskStatus, ApiComment, ApiUser } from "@/types";
 import { STATUS_LABELS, STATUS_ORDER } from "@/types";
 
 type Props = {
@@ -20,6 +20,34 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
   const [status, setStatus] = useState<TaskStatus>(task.status);
   const [assigneeId, setAssigneeId] = useState<string>(task.assigneeId ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState("");
+
+  const { data: userRes } = useQuery({
+    queryKey: ["me"],
+    queryFn: () => apiFetch<{ user: ApiUser }>("/api/users/me"),
+  });
+  const currentUser = userRes?.user;
+  
+  const currentUserMembership = members.find((m) => m.user.id === currentUser?.id);
+  const canPostComment = currentUserMembership?.role === "admin" || currentUserMembership?.role === "member";
+
+  const { data: commentsRes, isLoading: isLoadingComments } = useQuery({
+    queryKey: ["task", task.id, "comments"],
+    queryFn: () => apiFetch<{ comments: ApiComment[] }>(`/api/tasks/${task.id}/comments`),
+  });
+
+  const postComment = useMutation({
+    mutationFn: (body: string) =>
+      apiFetch<{ comment: ApiComment }>(`/api/tasks/${task.id}/comments`, {
+        method: "POST",
+        body: JSON.stringify({ body }),
+      }),
+    onSuccess: () => {
+      setNewComment("");
+      queryClient.invalidateQueries({ queryKey: ["task", task.id, "comments"] });
+    },
+    onError: (err) => setError(err instanceof Error ? err.message : "failed to post comment"),
+  });
 
   const updateTask = useMutation({
     mutationFn: (input: Partial<ApiTask>) =>
@@ -129,7 +157,7 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
           </p>
         )}
 
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 pt-4 border-t border-border">
           <button
             onClick={() => deleteTask.mutate()}
             disabled={deleteTask.isPending}
@@ -152,6 +180,56 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
               {updateTask.isPending ? "saving…" : "save"}
             </button>
           </div>
+        </div>
+
+        <div className="mt-8 pt-6 border-t border-border">
+          <h3 className="text-sm font-medium mb-4">comments</h3>
+          
+          <div className="space-y-4 mb-4 max-h-60 overflow-y-auto pr-2">
+            {isLoadingComments ? (
+              <p className="text-xs text-muted">loading comments...</p>
+            ) : commentsRes?.comments.length === 0 ? (
+              <p className="text-xs text-muted">no comments yet.</p>
+            ) : (
+              commentsRes?.comments.map((comment) => (
+                <div key={comment.id} className="bg-bg border border-border rounded p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-white">{comment.author.name}</span>
+                    <span className="text-xs text-muted">
+                      {new Date(comment.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">{comment.body}</p>
+                </div>
+              ))
+            )}
+          </div>
+
+          {canPostComment && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newComment.trim()) return;
+                postComment.mutate(newComment.trim());
+              }}
+              className="flex flex-col gap-2"
+            >
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="add a comment..."
+                rows={2}
+                className="w-full rounded-md bg-bg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={postComment.isPending || !newComment.trim()}
+                className="self-end text-sm px-4 py-2 rounded-md bg-accent text-white hover:bg-indigo-500 disabled:opacity-50"
+              >
+                {postComment.isPending ? "posting..." : "post comment"}
+              </button>
+            </form>
+          )}
         </div>
       </div>
     </div>
