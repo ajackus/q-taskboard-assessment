@@ -11,7 +11,9 @@ import { TaskDetail } from "@/components/TaskDetail";
 import type { ApiProjectDetail, ApiTask, TaskStatus } from "@/types";
 import { STATUS_ORDER } from "@/types";
 
-type PageProps = { params: Promise<{ id: string }> };
+type PageProps = {
+  params: Promise<{ id: string }>;
+};
 
 export default function ProjectPage({ params }: PageProps) {
   const router = useRouter();
@@ -22,36 +24,98 @@ export default function ProjectPage({ params }: PageProps) {
   const [newTitle, setNewTitle] = useState("");
   const [newColumn, setNewColumn] = useState<TaskStatus>("todo");
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
-    if (!getToken()) router.replace("/login");
+    if (!getToken()) {
+      router.replace("/login");
+    }
   }, [router]);
 
   const { data, isLoading, error: queryError } = useQuery({
     queryKey: ["project", id],
-    queryFn: () => apiFetch<{ project: ApiProjectDetail }>(`/api/projects/${id}`),
+    queryFn: () =>
+      apiFetch<{ project: ApiProjectDetail }>(
+        `/api/projects/${id}`
+      ),
   });
 
   const createTask = useMutation({
-    mutationFn: (input: { title: string; status: TaskStatus }) =>
-      apiFetch<{ task: ApiTask }>(`/api/projects/${id}/tasks`, {
-        method: "POST",
-        body: JSON.stringify(input),
-      }),
+    mutationFn: (input: {
+      title: string;
+      status: TaskStatus;
+    }) =>
+      apiFetch<{ task: ApiTask }>(
+        `/api/projects/${id}/tasks`,
+        {
+          method: "POST",
+          body: JSON.stringify(input),
+        }
+      ),
+
     onSuccess: () => {
       setNewTitle("");
-      queryClient.invalidateQueries({ queryKey: ["project", id] });
+      queryClient.invalidateQueries({
+        queryKey: ["project", id],
+      });
     },
-    onError: (err) => setError(err instanceof Error ? err.message : "create failed"),
+
+    onError: (err) =>
+      setError(
+        err instanceof Error
+          ? err.message
+          : "create failed"
+      ),
   });
 
+  async function exportTasks() {
+    try {
+      setExporting(true);
+
+      const response = await fetch(
+        `/api/projects/${id}/export-airtable`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Export failed"
+        );
+      }
+
+      alert(
+        `Export Complete\n\nExported: ${data.exported}\nFailed: ${data.failed}`
+      );
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Export failed"
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const project = data?.project;
-  const tasksByStatus: Record<TaskStatus, ApiTask[]> = {
+
+  const tasksByStatus: Record<
+    TaskStatus,
+    ApiTask[]
+  > = {
     todo: [],
     in_progress: [],
     review: [],
     done: [],
   };
+
   if (project) {
     for (const t of project.tasks) {
       tasksByStatus[t.status].push(t);
@@ -70,10 +134,17 @@ export default function ProjectPage({ params }: PageProps) {
           ← all projects
         </Link>
 
-        {isLoading && <p className="text-muted text-sm mt-6">loading…</p>}
+        {isLoading && (
+          <p className="text-muted text-sm mt-6">
+            loading…
+          </p>
+        )}
+
         {queryError && (
           <p className="text-sm text-red-400 mt-6">
-            {queryError instanceof Error ? queryError.message : "failed to load"}
+            {queryError instanceof Error
+              ? queryError.message
+              : "failed to load"}
           </p>
         )}
 
@@ -81,39 +152,70 @@ export default function ProjectPage({ params }: PageProps) {
           <>
             <div className="flex items-start justify-between mt-4 mb-8">
               <div>
-                <h1 className="text-2xl font-semibold">{project.name}</h1>
+                <h1 className="text-2xl font-semibold">
+                  {project.name}
+                </h1>
+
                 {project.description && (
                   <p className="text-sm text-muted mt-1 max-w-2xl">
                     {project.description}
                   </p>
                 )}
+
                 <p className="text-xs text-muted mt-2">
-                  owner: {project.owner.name} · {project.memberships.length} members
+                  owner: {project.owner.name} ·{" "}
+                  {project.memberships.length} members
                 </p>
               </div>
+
+              <button
+                onClick={exportTasks}
+                disabled={exporting}
+                className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md px-4 py-2 disabled:opacity-50"
+              >
+                {exporting
+                  ? "Exporting..."
+                  : "Export to Airtable"}
+              </button>
             </div>
 
             <section className="bg-surface border border-border rounded-lg p-4 mb-6">
-              <h2 className="text-sm font-medium mb-3">add a task</h2>
+              <h2 className="text-sm font-medium mb-3">
+                add a task
+              </h2>
+
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
+
                   if (!newTitle.trim()) return;
+
                   setError(null);
-                  createTask.mutate({ title: newTitle.trim(), status: newColumn });
+
+                  createTask.mutate({
+                    title: newTitle.trim(),
+                    status: newColumn,
+                  });
                 }}
                 className="flex gap-2"
               >
                 <input
                   type="text"
                   value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
+                  onChange={(e) =>
+                    setNewTitle(e.target.value)
+                  }
                   placeholder="task title"
                   className="flex-1 rounded-md bg-bg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none"
                 />
+
                 <select
                   value={newColumn}
-                  onChange={(e) => setNewColumn(e.target.value as TaskStatus)}
+                  onChange={(e) =>
+                    setNewColumn(
+                      e.target.value as TaskStatus
+                    )
+                  }
                   className="rounded-md bg-bg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none"
                 >
                   {STATUS_ORDER.map((s) => (
@@ -122,6 +224,7 @@ export default function ProjectPage({ params }: PageProps) {
                     </option>
                   ))}
                 </select>
+
                 <button
                   type="submit"
                   disabled={createTask.isPending}
@@ -130,8 +233,12 @@ export default function ProjectPage({ params }: PageProps) {
                   add
                 </button>
               </form>
+
               {error && (
-                <p className="text-sm text-red-400 mt-2" role="alert">
+                <p
+                  className="text-sm text-red-400 mt-2"
+                  role="alert"
+                >
                   {error}
                 </p>
               )}
@@ -149,7 +256,10 @@ export default function ProjectPage({ params }: PageProps) {
             </div>
 
             <section className="mt-10">
-              <h2 className="text-sm font-medium mb-3">members</h2>
+              <h2 className="text-sm font-medium mb-3">
+                members
+              </h2>
+
               <ul className="bg-surface border border-border rounded-lg divide-y divide-border">
                 {project.memberships.map((m) => (
                   <li
@@ -157,6 +267,7 @@ export default function ProjectPage({ params }: PageProps) {
                     className="px-4 py-3 flex items-center justify-between text-sm"
                   >
                     <span>{m.user.name}</span>
+
                     <span className="text-xs text-muted">
                       {m.user.email} · {m.role}
                     </span>
@@ -173,7 +284,9 @@ export default function ProjectPage({ params }: PageProps) {
           task={activeTask}
           projectId={id}
           members={project.memberships}
-          onClose={() => setActiveTask(null)}
+          onClose={() =>
+            setActiveTask(null)
+          }
         />
       )}
     </div>
