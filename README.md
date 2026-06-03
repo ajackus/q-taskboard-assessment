@@ -1,5 +1,10 @@
 # TaskBoard — Project Management App
 
+## Screen Recording
+
+Session walkthrough (setup → bug proofs → fixes → Part 3a/3c demos → final test run):
+**https://www.loom.com/share/a8736008e61b4c50959296f0b33f0251**
+
 A Next.js 15 fullstack application for managing projects, tasks, and team members. TypeScript + Prisma + PostgreSQL on the server, React 19 + TanStack Query on the client.
 
 ## Quick Setup (Docker — Recommended)
