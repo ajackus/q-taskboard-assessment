@@ -4,11 +4,11 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, getToken } from "@/lib/api-client";
+import { apiFetch, getToken, getStoredUser } from "@/lib/api-client";
 import { Header } from "@/components/Header";
 import { StatusColumn } from "@/components/StatusColumn";
 import { TaskDetail } from "@/components/TaskDetail";
-import type { ApiProjectDetail, ApiTask, TaskStatus } from "@/types";
+import type { ApiProjectDetail, ApiTask, TaskStatus, Role } from "@/types";
 import { STATUS_ORDER } from "@/types";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -22,6 +22,7 @@ export default function ProjectPage({ params }: PageProps) {
   const [newTitle, setNewTitle] = useState("");
   const [newColumn, setNewColumn] = useState<TaskStatus>("todo");
   const [error, setError] = useState<string | null>(null);
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!getToken()) router.replace("/login");
@@ -30,6 +31,23 @@ export default function ProjectPage({ params }: PageProps) {
   const { data, isLoading, error: queryError } = useQuery({
     queryKey: ["project", id],
     queryFn: () => apiFetch<{ project: ApiProjectDetail }>(`/api/projects/${id}`),
+  });
+
+  const exportToAirtable = useMutation({
+    mutationFn: () =>
+      apiFetch<{ ok: boolean; created: number; updated: number; errors: string[] }>(
+        `/api/projects/${id}/export`,
+        { method: "POST" }
+      ),
+    onSuccess: (data) => {
+      const msg = `exported — ${data.created} created, ${data.updated} updated${
+        data.errors.length ? ` (${data.errors.length} error(s))` : ""
+      }`;
+      setExportMsg(msg);
+      setTimeout(() => setExportMsg(null), 5000);
+    },
+    onError: (err) =>
+      setExportMsg(err instanceof Error ? err.message : "export failed"),
   });
 
   const createTask = useMutation({
@@ -90,6 +108,36 @@ export default function ProjectPage({ params }: PageProps) {
                 <p className="text-xs text-muted mt-2">
                   owner: {project.owner.name} · {project.memberships.length} members
                 </p>
+              </div>
+
+              {/* Export to Airtable — disabled for viewers */}
+              <div className="flex flex-col items-end gap-1">
+                {(() => {
+                  const currentUserId = getStoredUser()?.id;
+                  const role =
+                    project.memberships.find((m) => m.user.id === currentUserId)?.role ??
+                    "viewer";
+                  const canExport = role === "admin" || role === "member";
+                  return (
+                    <>
+                      <button
+                        onClick={() => exportToAirtable.mutate()}
+                        disabled={!canExport || exportToAirtable.isPending}
+                        title={
+                          !canExport ? "viewers cannot export tasks" : "export tasks to Airtable"
+                        }
+                        className="text-sm px-4 py-2 rounded-md bg-surface border border-border hover:border-accent disabled:opacity-40 disabled:cursor-not-allowed transition"
+                      >
+                        {exportToAirtable.isPending ? "exporting…" : "Export to Airtable"}
+                      </button>
+                      {exportMsg && (
+                        <p className="text-xs text-muted max-w-xs text-right">
+                          {exportMsg}
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
@@ -173,6 +221,11 @@ export default function ProjectPage({ params }: PageProps) {
           task={activeTask}
           projectId={id}
           members={project.memberships}
+          userRole={
+            (project.memberships.find(
+              (m) => m.user.id === getStoredUser()?.id
+            )?.role ?? "viewer") as Role
+          }
           onClose={() => setActiveTask(null)}
         />
       )}

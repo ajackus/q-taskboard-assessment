@@ -13,11 +13,12 @@ export async function GET(req: NextRequest) {
       project: {
         include: {
           owner: { select: { id: true, name: true, email: true } },
-          tasks: true,
+          _count: { select: { tasks: true } },
         },
       },
     },
     orderBy: { createdAt: "desc" },
+    take: 50,
   });
 
   const projects = memberships.map((m) => ({
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
     description: m.project.description,
     role: m.role,
     owner: m.project.owner,
-    taskCount: m.project.tasks.length,
+    taskCount: m.project._count.tasks,
     createdAt: m.project.createdAt,
   }));
 

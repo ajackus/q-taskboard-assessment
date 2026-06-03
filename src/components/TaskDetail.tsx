@@ -1,25 +1,48 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
-import type { ApiTask, ApiProjectMember, TaskStatus } from "@/types";
+import type { ApiTask, ApiProjectMember, ApiComment, TaskStatus, Role } from "@/types";
 import { STATUS_LABELS, STATUS_ORDER } from "@/types";
 
 type Props = {
   task: ApiTask;
   projectId: string;
   members: ApiProjectMember[];
+  userRole: Role;
   onClose: () => void;
 };
 
-export function TaskDetail({ task, projectId, members, onClose }: Props) {
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export function TaskDetail({ task, projectId, members, userRole, onClose }: Props) {
   const queryClient = useQueryClient();
+
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
   const [status, setStatus] = useState<TaskStatus>(task.status);
   const [assigneeId, setAssigneeId] = useState<string>(task.assigneeId ?? "");
   const [error, setError] = useState<string | null>(null);
+
+  const [commentBody, setCommentBody] = useState("");
+  const [commentError, setCommentError] = useState<string | null>(null);
+
+  const canComment = userRole === "admin" || userRole === "member";
+
+  const { data: commentsData, isLoading: commentsLoading } = useQuery({
+    queryKey: ["comments", task.id],
+    queryFn: () => apiFetch<{ comments: ApiComment[] }>(`/api/tasks/${task.id}/comments`),
+  });
+
+  const comments = commentsData?.comments ?? [];
 
   const updateTask = useMutation({
     mutationFn: (input: Partial<ApiTask>) =>
@@ -44,6 +67,20 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
     onError: (err) => setError(err instanceof Error ? err.message : "delete failed"),
   });
 
+  const postComment = useMutation({
+    mutationFn: (body: string) =>
+      apiFetch<{ comment: ApiComment }>(`/api/tasks/${task.id}/comments`, {
+        method: "POST",
+        body: JSON.stringify({ body }),
+      }),
+    onSuccess: () => {
+      setCommentBody("");
+      setCommentError(null);
+      queryClient.invalidateQueries({ queryKey: ["comments", task.id] });
+    },
+    onError: (err) => setCommentError(err instanceof Error ? err.message : "failed to post comment"),
+  });
+
   function onSave() {
     setError(null);
     updateTask.mutate({
@@ -54,13 +91,21 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
     });
   }
 
+  function onSubmitComment(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = commentBody.trim();
+    if (!trimmed) return;
+    setCommentError(null);
+    postComment.mutate(trimmed);
+  }
+
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-center justify-center px-4 z-50"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl bg-surface border border-border rounded-lg p-6"
+        className="w-full max-w-xl bg-surface border border-border rounded-lg p-6 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
@@ -129,7 +174,7 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
           </p>
         )}
 
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 mb-6">
           <button
             onClick={() => deleteTask.mutate()}
             disabled={deleteTask.isPending}
@@ -152,6 +197,73 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
               {updateTask.isPending ? "saving…" : "save"}
             </button>
           </div>
+        </div>
+
+        {/* ── Comments ── */}
+        <div className="border-t border-border pt-5">
+          <h3 className="text-sm font-medium mb-3">
+            comments
+            {comments.length > 0 && (
+              <span className="ml-1 text-xs text-muted">({comments.length})</span>
+            )}
+          </h3>
+
+          {commentsLoading && (
+            <p className="text-xs text-muted mb-3">loading comments…</p>
+          )}
+
+          {comments.length === 0 && !commentsLoading && (
+            <p className="text-xs text-muted mb-3">no comments yet</p>
+          )}
+
+          {comments.length > 0 && (
+            <ul
+              className="space-y-3 mb-4 max-h-48 overflow-y-auto pr-1"
+              aria-label="comments"
+            >
+              {comments.map((c) => (
+                <li
+                  key={c.id}
+                  className="bg-bg border border-border rounded-md px-3 py-2 text-sm"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-xs">{c.user.name}</span>
+                    <span className="text-xs text-muted">{formatDate(c.createdAt)}</span>
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap break-words">{c.body}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {canComment ? (
+            <form onSubmit={onSubmitComment} className="flex flex-col gap-2">
+              <textarea
+                value={commentBody}
+                onChange={(e) => setCommentBody(e.target.value)}
+                placeholder="add a comment…"
+                rows={2}
+                aria-label="new comment"
+                className="block w-full rounded-md bg-bg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none resize-none"
+              />
+              {commentError && (
+                <p className="text-xs text-red-400" role="alert">
+                  {commentError}
+                </p>
+              )}
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={postComment.isPending || !commentBody.trim()}
+                  className="text-sm px-4 py-2 rounded-md bg-accent text-white hover:bg-indigo-500 disabled:opacity-50"
+                >
+                  {postComment.isPending ? "posting…" : "post comment"}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <p className="text-xs text-muted italic">viewers cannot post comments</p>
+          )}
         </div>
       </div>
     </div>

@@ -22,25 +22,22 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const q = req.nextUrl.searchParams.get("q");
 
-  if (q) {
-    // search across title and description
-    const sql = `
-      SELECT id, project_id, title, description, status, assignee_id, created_by_id, position, created_at, updated_at
-      FROM tasks
-      WHERE project_id = '${projectId}'
-        AND (title ILIKE '%${q}%' OR description ILIKE '%${q}%')
-      ORDER BY position ASC
-    `;
-    const tasks = await prisma.$queryRawUnsafe(sql);
-    return NextResponse.json({ tasks });
-  }
-
   const tasks = await prisma.task.findMany({
-    where: { projectId },
+    where: q
+      ? {
+          projectId,
+          OR: [
+            { title: { contains: q, mode: "insensitive" } },
+            { description: { contains: q, mode: "insensitive" } },
+          ],
+        }
+      : { projectId },
     include: {
       assignee: { select: { id: true, name: true, email: true } },
     },
-    orderBy: [{ status: "asc" }, { position: "asc" }],
+    orderBy: q
+      ? { position: "asc" }
+      : [{ status: "asc" }, { position: "asc" }],
   });
 
   return NextResponse.json({ tasks });
