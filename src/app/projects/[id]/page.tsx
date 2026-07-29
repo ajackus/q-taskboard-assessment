@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, getStoredUser, getToken } from "@/lib/api-client";
+import { can } from "@/lib/permissions";
 import { Header } from "@/components/Header";
 import { StatusColumn } from "@/components/StatusColumn";
 import { TaskDetail } from "@/components/TaskDetail";
-import type { ApiProjectDetail, ApiTask, TaskStatus } from "@/types";
+import type { ApiExportSummary, ApiProjectDetail, ApiTask, TaskStatus } from "@/types";
 import { STATUS_ORDER } from "@/types";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -22,6 +23,8 @@ export default function ProjectPage({ params }: PageProps) {
   const [newTitle, setNewTitle] = useState("");
   const [newColumn, setNewColumn] = useState<TaskStatus>("todo");
   const [error, setError] = useState<string | null>(null);
+  const [exportSummary, setExportSummary] = useState<ApiExportSummary | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!getToken()) router.replace("/login");
@@ -45,9 +48,23 @@ export default function ProjectPage({ params }: PageProps) {
     onError: (err) => setError(err instanceof Error ? err.message : "create failed"),
   });
 
+  const exportToAirtable = useMutation({
+    mutationFn: () =>
+      apiFetch<ApiExportSummary>(`/api/projects/${id}/export`, { method: "POST" }),
+    onSuccess: (summary) => {
+      setExportError(null);
+      setExportSummary(summary);
+    },
+    onError: (err) => {
+      setExportSummary(null);
+      setExportError(err instanceof Error ? err.message : "export failed");
+    },
+  });
+
   const project = data?.project;
   const myUserId = getStoredUser()?.id;
   const myRole = project?.memberships.find((m) => m.user.id === myUserId)?.role ?? null;
+  const canExport = can(myRole, "export:run");
   const tasksByStatus: Record<TaskStatus, ApiTask[]> = {
     todo: [],
     in_progress: [],
@@ -93,6 +110,42 @@ export default function ProjectPage({ params }: PageProps) {
                   owner: {project.owner.name} · {project.memberships.length} members
                 </p>
               </div>
+
+              {canExport && (
+                <div className="text-right">
+                  <button
+                    onClick={() => {
+                      setExportError(null);
+                      exportToAirtable.mutate();
+                    }}
+                    disabled={exportToAirtable.isPending}
+                    className="text-sm px-4 py-2 rounded-md border border-border hover:border-accent disabled:opacity-50"
+                  >
+                    {exportToAirtable.isPending ? "exporting…" : "export to Airtable"}
+                  </button>
+
+                  {exportError && (
+                    <p className="text-xs text-red-400 mt-2" role="alert">
+                      {exportError}
+                    </p>
+                  )}
+
+                  {exportSummary && (
+                    <div className="text-xs text-muted mt-2">
+                      <p>
+                        exported {exportSummary.exported} · updated {exportSummary.updated}
+                        {exportSummary.failed.length > 0 &&
+                          ` · ${exportSummary.failed.length} failed`}
+                      </p>
+                      {exportSummary.failed.map((f) => (
+                        <p key={f.taskId} className="text-red-400">
+                          task {f.taskId}: {f.error}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <section className="bg-surface border border-border rounded-lg p-4 mb-6">

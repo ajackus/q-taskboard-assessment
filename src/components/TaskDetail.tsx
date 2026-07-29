@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
+import { can } from "@/lib/permissions";
 import type { ApiComment, ApiTask, ApiProjectMember, Role, TaskStatus } from "@/types";
 import { STATUS_LABELS, STATUS_ORDER } from "@/types";
 
@@ -24,7 +25,7 @@ export function TaskDetail({ task, projectId, members, myRole, onClose }: Props)
   const [commentBody, setCommentBody] = useState("");
   const [commentError, setCommentError] = useState<string | null>(null);
 
-  const canComment = myRole === "admin" || myRole === "member";
+  const canComment = can(myRole, "comment:create");
 
   const { data: commentsData } = useQuery({
     queryKey: ["task", task.id, "comments"],
