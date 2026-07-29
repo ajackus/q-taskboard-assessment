@@ -21,6 +21,15 @@ export type ApiTask = {
   assignee?: ApiUser | null;
 };
 
+export type ApiComment = {
+  id: string;
+  taskId: string;
+  authorId: string;
+  body: string;
+  createdAt: string;
+  author: ApiUser;
+};
+
 export type ApiProjectMember = {
   id: string;
   role: Role;
@@ -37,6 +46,12 @@ export type ApiProjectDetail = {
   tasks: ApiTask[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type ApiExportSummary = {
+  exported: number;
+  updated: number;
+  failed: { taskId: string; error: string }[];
 };
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {
