@@ -47,11 +47,3 @@ export async function getProjectMembership(userId: string, projectId: string) {
     select: { role: true },
   });
 }
-
-export function canEditProject(role: ProjectRole | null | undefined): boolean {
-  return role === "admin";
-}
-
-export function canEditTasks(role: ProjectRole | null | undefined): boolean {
-  return role === "admin" || role === "member";
-}

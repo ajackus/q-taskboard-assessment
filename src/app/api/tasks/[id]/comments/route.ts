@@ -7,8 +7,8 @@ import {
   notFound,
   badRequest,
   getProjectMembership,
-  canEditTasks,
 } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { createCommentSchema } from "@/schemas/comment";
 
 type Params = { params: Promise<{ id: string }> };
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const membership = await getProjectMembership(user.id, task.projectId);
   if (!membership) return forbidden("you are not a member of this project");
-  if (!canEditTasks(membership.role)) {
+  if (!can(membership.role, "comment:create")) {
     return forbidden("viewers cannot comment on tasks");
   }
 

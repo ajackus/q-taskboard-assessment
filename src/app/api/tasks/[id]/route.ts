@@ -7,8 +7,8 @@ import {
   notFound,
   badRequest,
   getProjectMembership,
-  canEditTasks,
 } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { updateTaskSchema } from "@/schemas/task";
 
 type Params = { params: Promise<{ id: string }> };
@@ -48,7 +48,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   const membership = await getProjectMembership(user.id, existing.projectId);
   if (!membership) return forbidden("you are not a member of this project");
-  if (!canEditTasks(membership.role)) {
+  if (!can(membership.role, "task:delete")) {
     return forbidden("viewers cannot delete tasks");
   }
 

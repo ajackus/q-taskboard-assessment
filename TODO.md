@@ -50,6 +50,33 @@ implementation detail on each item.
       `prisma generate` re-run since its `node_modules` is a separate named volume
       from the host's.
 
+## Auth architecture (ad hoc, user-requested mid-session)
+
+Not part of REVIEW.md or the original Part 2/3a/3b/3c plan — user asked directly for
+these two after Part 3a was done.
+
+- [x] `src/middleware.ts` — Next.js middleware (Node.js runtime, since `jsonwebtoken`
+      needs Node's `crypto`, not Edge's Web Crypto) verifies the JWT for every
+      `/api/*` route except `/api/auth/login` and `/api/auth/register`, returning 401
+      before the request reaches any handler. Forwards the decoded `userId`/`email` via
+      `x-user-id`/`x-user-email` request headers (not currently consumed downstream —
+      each route's own `getCurrentUser` still does its own lookup; this is authentication
+      only, scoped per user's explicit choice, not full request-auth centralization).
+- [x] `src/lib/permissions.ts` — `can(role, action)` state machine (roles = states,
+      actions = guarded transitions) replacing the old `canEditProject`/`canEditTasks`
+      ad hoc booleans in `src/lib/auth.ts`. Actions: `project:edit`, `project:delete`,
+      `task:create`, `task:edit`, `task:delete`, `comment:create`, `export:run` (latter
+      pre-declared for Part 3c, not wired up yet since export routes don't exist).
+      Wired into all 4 former call sites (`projects/[id]/route.ts` PATCH+DELETE,
+      `tasks/[id]/route.ts` DELETE, `projects/[id]/tasks/route.ts` POST,
+      `tasks/[id]/comments/route.ts` POST).
+- [x] Tests: `src/tests/middleware.test.ts` (5 tests), `src/tests/permissions.test.ts`
+      (6 tests), both TDD red→green. Verified live via curl: viewer 403 on
+      project-edit/task-delete/task-create/comment-create, member 201 on task-create.
+- Note: `tasks/[id]/route.ts` `PATCH` still has no membership/role check at all (bug #2,
+  IDOR) — intentionally left alone here since it's tracked as its own separate fix
+  above, not folded into this refactor.
+
 ## Part 3b — Activity Feed
 
 - [ ] Prisma `ActivityEvent` model (`projectId`, `actorId`, `action`, `metadata`,

@@ -6,8 +6,8 @@ import {
   forbidden,
   badRequest,
   getProjectMembership,
-  canEditTasks,
 } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { createTaskSchema, searchQuerySchema } from "@/schemas/task";
 
 type Params = { params: Promise<{ id: string }> };
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { id: projectId } = await params;
   const membership = await getProjectMembership(user.id, projectId);
   if (!membership) return forbidden("you are not a member of this project");
-  if (!canEditTasks(membership.role)) {
+  if (!can(membership.role, "task:create")) {
     return forbidden("viewers cannot create tasks");
   }
 
