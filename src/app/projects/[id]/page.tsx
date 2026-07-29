@@ -4,7 +4,7 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, getToken } from "@/lib/api-client";
+import { apiFetch, getStoredUser, getToken } from "@/lib/api-client";
 import { Header } from "@/components/Header";
 import { StatusColumn } from "@/components/StatusColumn";
 import { TaskDetail } from "@/components/TaskDetail";
@@ -46,6 +46,8 @@ export default function ProjectPage({ params }: PageProps) {
   });
 
   const project = data?.project;
+  const myUserId = getStoredUser()?.id;
+  const myRole = project?.memberships.find((m) => m.user.id === myUserId)?.role ?? null;
   const tasksByStatus: Record<TaskStatus, ApiTask[]> = {
     todo: [],
     in_progress: [],
@@ -173,6 +175,7 @@ export default function ProjectPage({ params }: PageProps) {
           task={activeTask}
           projectId={id}
           members={project.memberships}
+          myRole={myRole}
           onClose={() => setActiveTask(null)}
         />
       )}

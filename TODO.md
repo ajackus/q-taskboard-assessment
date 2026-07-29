@@ -34,13 +34,21 @@ implementation detail on each item.
 
 ## Part 3a — Task Comments
 
-- [ ] Prisma `Comment` model (`taskId`, `authorId`, `body`, `createdAt`) + migration
-- [ ] `src/schemas/comment.ts` — `createCommentSchema`
-- [ ] `GET/POST /api/tasks/[id]/comments` — membership check both; `POST` requires
+- [x] Prisma `Comment` model (`taskId`, `authorId`, `body`, `createdAt`) + migration
+      (`20260729073632_add_comments`)
+- [x] `src/schemas/comment.ts` — `createCommentSchema`
+- [x] `GET/POST /api/tasks/[id]/comments` — membership check both; `POST` requires
       admin/member (viewers 403); no `PATCH`/`DELETE` route (append-only by omission)
-- [ ] Frontend: comments section in `TaskDetail.tsx` — chronological list + post form
-      gated on role
-- [ ] Tests: viewer-post-403, member-post-201, non-member-get-403, ordering
+- [x] Frontend: comments section in `TaskDetail.tsx` — chronological list + post form
+      gated on role (`myRole` computed in `ProjectPage` from `project.memberships`)
+- [x] Tests: viewer-post-403, member-post-201, non-member-get-403 (via 404 task-not-found
+      path is separate; non-member-on-real-task returns 403), ordering
+      (`src/tests/comments.test.ts`, 7 tests, TDD red→green)
+- [x] Verified live in browser (Playwright): member posts → appears without reload,
+      input clears; viewer sees the comment but gets "viewers cannot post comments"
+      instead of the form. Confirmed Docker's `web` container needed its own
+      `prisma generate` re-run since its `node_modules` is a separate named volume
+      from the host's.
 
 ## Part 3b — Activity Feed
 
@@ -72,7 +80,7 @@ implementation detail on each item.
 - [ ] Real demo: run against actual Airtable base twice, screenshot/share-link showing
       records + no duplicates on 2nd run
 
-## Bonus (not in the graded rubric) — Kanban Drag & Drop
+## Bonus — Kanban Drag & Drop
 
 Flagging again: this isn't part of Part 1/2/3a/3b/3c and doesn't map to any REVIEW.md
 category — only take this on if the required parts are done and tested with time to
