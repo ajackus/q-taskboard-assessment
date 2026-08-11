@@ -22,6 +22,7 @@ export default function ProjectPage({ params }: PageProps) {
   const [newTitle, setNewTitle] = useState("");
   const [newColumn, setNewColumn] = useState<TaskStatus>("todo");
   const [error, setError] = useState<string | null>(null);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!getToken()) router.replace("/login");
@@ -43,6 +44,22 @@ export default function ProjectPage({ params }: PageProps) {
       queryClient.invalidateQueries({ queryKey: ["project", id] });
     },
     onError: (err) => setError(err instanceof Error ? err.message : "create failed"),
+  });
+
+  const syncAirtable = useMutation({
+    mutationFn: () =>
+      apiFetch<{ total: number; synced: number; failed: { taskId: string }[] }>(
+        `/api/projects/${id}/sync-airtable`,
+        { method: "POST" },
+      ),
+    onMutate: () => setSyncMsg(null),
+    onSuccess: (r) =>
+      setSyncMsg(
+        `Synced ${r.synced}/${r.total} tasks to Airtable` +
+          (r.failed.length ? ` · ${r.failed.length} failed` : ""),
+      ),
+    onError: (err) =>
+      setSyncMsg(err instanceof Error ? err.message : "sync failed"),
   });
 
   const project = data?.project;
@@ -90,6 +107,20 @@ export default function ProjectPage({ params }: PageProps) {
                 <p className="text-xs text-muted mt-2">
                   owner: {project.owner.name} · {project.memberships.length} members
                 </p>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <button
+                  onClick={() => syncAirtable.mutate()}
+                  disabled={syncAirtable.isPending}
+                  className="bg-surface border border-border hover:border-accent text-sm font-medium rounded-md px-4 py-2 disabled:opacity-50"
+                >
+                  {syncAirtable.isPending ? "syncing…" : "Sync to Airtable"}
+                </button>
+                {syncMsg && (
+                  <p className="text-xs text-muted max-w-xs text-right" role="status">
+                    {syncMsg}
+                  </p>
+                )}
               </div>
             </div>
 
