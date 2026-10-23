@@ -7,6 +7,11 @@ export default defineConfig({
     setupFiles: ["./src/tests/setup.ts"],
     globals: true,
     include: ["src/**/*.test.{ts,tsx}"],
+    poolOptions: {
+      threads: {
+        singleThread: true,
+      },
+    },
   },
   esbuild: {
     jsx: "automatic",

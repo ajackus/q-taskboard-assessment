@@ -4,7 +4,7 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, getToken } from "@/lib/api-client";
+import { apiFetch, getToken, getStoredUser } from "@/lib/api-client";
 import { Header } from "@/components/Header";
 import { StatusColumn } from "@/components/StatusColumn";
 import { TaskDetail } from "@/components/TaskDetail";
@@ -91,6 +91,23 @@ export default function ProjectPage({ params }: PageProps) {
                   owner: {project.owner.name} · {project.memberships.length} members
                 </p>
               </div>
+              
+              {project.memberships.find(m => m.user.id === getStoredUser()?.id)?.role !== "viewer" && (
+                <button
+                  onClick={async () => {
+                    try {
+                      alert("Exporting to Airtable...");
+                      const res = await apiFetch<{ successCount: number; failCount: number; total: number }>(`/api/projects/${id}/export`, { method: "POST" });
+                      alert(`Export complete! Success: ${res.successCount}, Failed: ${res.failCount}`);
+                    } catch (err: any) {
+                      alert(`Export failed: ${err.message}`);
+                    }
+                  }}
+                  className="bg-accent hover:bg-indigo-500 text-white text-sm font-medium rounded-md px-4 py-2"
+                >
+                  Export to Airtable
+                </button>
+              )}
             </div>
 
             <section className="bg-surface border border-border rounded-lg p-4 mb-6">
