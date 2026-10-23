@@ -33,6 +33,7 @@ model User {
   assignedTasks  Task[]       @relation("TaskAssignee")
   createdTasks   Task[]       @relation("TaskCreator")
 
+ comments  Comment[] 
   @@map("users")
 }
 
@@ -82,6 +83,21 @@ model Task {
   assignee  User?   @relation("TaskAssignee", fields: [assigneeId], references: [id])
   createdBy User    @relation("TaskCreator", fields: [createdById], references: [id])
 
+ comments  Comment[]
   @@index([projectId, status])
   @@map("tasks")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  body      String
+  taskId    String   @map("task_id")
+  authorId  String   @map("author_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id])
+
+  @@index([taskId])
+  @@map("comments")
 }

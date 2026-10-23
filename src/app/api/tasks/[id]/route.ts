@@ -21,16 +21,45 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const body = await req.json().catch(() => null);
   const parsed = updateTaskSchema.safeParse(body);
-  if (!parsed.success) return badRequest("invalid input", parsed.error.flatten());
 
-  const existing = await prisma.task.findUnique({ where: { id } });
-  if (!existing) return notFound("task not found");
+  if (!parsed.success) {
+    return badRequest("invalid input", parsed.error.flatten());
+  }
+
+  const existing = await prisma.task.findUnique({
+    where: { id },
+  });
+
+  if (!existing) {
+    return notFound("task not found");
+  }
+
+  // SECURITY FIX: Verify project membership
+  const membership = await getProjectMembership(
+    user.id,
+    existing.projectId
+  );
+
+  if (!membership) {
+    return forbidden("you are not a member of this project");
+  }
+
+  // SECURITY FIX: Verify role permissions
+  if (!canEditTasks(membership.role)) {
+    return forbidden("viewers cannot update tasks");
+  }
 
   const task = await prisma.task.update({
     where: { id },
     data: parsed.data,
     include: {
-      assignee: { select: { id: true, name: true, email: true } },
+      assignee: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
     },
   });
 
@@ -43,15 +72,30 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   const { id } = await params;
 
-  const existing = await prisma.task.findUnique({ where: { id } });
-  if (!existing) return notFound("task not found");
+  const existing = await prisma.task.findUnique({
+    where: { id },
+  });
 
-  const membership = await getProjectMembership(user.id, existing.projectId);
-  if (!membership) return forbidden("you are not a member of this project");
+  if (!existing) {
+    return notFound("task not found");
+  }
+
+  const membership = await getProjectMembership(
+    user.id,
+    existing.projectId
+  );
+
+  if (!membership) {
+    return forbidden("you are not a member of this project");
+  }
+
   if (!canEditTasks(membership.role)) {
     return forbidden("viewers cannot delete tasks");
   }
 
-  await prisma.task.delete({ where: { id } });
+  await prisma.task.delete({
+    where: { id },
+  });
+
   return NextResponse.json({ ok: true });
 }
