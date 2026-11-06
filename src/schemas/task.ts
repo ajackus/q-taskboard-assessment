@@ -10,6 +10,8 @@ export const createTaskSchema = z.object({
   assigneeId: z.string().nullable().optional(),
 });
 
+export const searchQuerySchema = z.string().trim().min(1).max(200);
+
 export const updateTaskSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(5000).nullable().optional(),

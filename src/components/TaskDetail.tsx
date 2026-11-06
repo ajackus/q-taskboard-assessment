@@ -1,25 +1,58 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
-import type { ApiTask, ApiProjectMember, TaskStatus } from "@/types";
+import { can } from "@/lib/permissions";
+import type { ApiComment, ApiTask, ApiProjectMember, Role, TaskStatus } from "@/types";
 import { STATUS_LABELS, STATUS_ORDER } from "@/types";
 
 type Props = {
   task: ApiTask;
   projectId: string;
   members: ApiProjectMember[];
+  myRole: Role | null;
   onClose: () => void;
 };
 
-export function TaskDetail({ task, projectId, members, onClose }: Props) {
+export function TaskDetail({ task, projectId, members, myRole, onClose }: Props) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
   const [status, setStatus] = useState<TaskStatus>(task.status);
   const [assigneeId, setAssigneeId] = useState<string>(task.assigneeId ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [commentBody, setCommentBody] = useState("");
+  const [commentError, setCommentError] = useState<string | null>(null);
+
+  const canComment = can(myRole, "comment:create");
+
+  const { data: commentsData } = useQuery({
+    queryKey: ["task", task.id, "comments"],
+    queryFn: () => apiFetch<{ comments: ApiComment[] }>(`/api/tasks/${task.id}/comments`),
+  });
+  const comments = commentsData?.comments ?? [];
+
+  const postComment = useMutation({
+    mutationFn: (body: string) =>
+      apiFetch<{ comment: ApiComment }>(`/api/tasks/${task.id}/comments`, {
+        method: "POST",
+        body: JSON.stringify({ body }),
+      }),
+    onSuccess: () => {
+      setCommentBody("");
+      queryClient.invalidateQueries({ queryKey: ["task", task.id, "comments"] });
+    },
+    onError: (err) =>
+      setCommentError(err instanceof Error ? err.message : "failed to post comment"),
+  });
+
+  function onPostComment() {
+    setCommentError(null);
+    const body = commentBody.trim();
+    if (!body) return;
+    postComment.mutate(body);
+  }
 
   const updateTask = useMutation({
     mutationFn: (input: Partial<ApiTask>) =>
@@ -60,7 +93,7 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl bg-surface border border-border rounded-lg p-6"
+        className="w-full max-w-xl bg-surface border border-border rounded-lg p-6 max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
@@ -152,6 +185,54 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
               {updateTask.isPending ? "saving…" : "save"}
             </button>
           </div>
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-border">
+          <h3 className="text-sm font-medium mb-3">comments</h3>
+
+          <ul className="space-y-3 mb-3">
+            {comments.length === 0 && (
+              <li className="text-sm text-muted">no comments yet</li>
+            )}
+            {comments.map((c) => (
+              <li key={c.id} className="text-sm">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-medium">{c.author.name}</span>
+                  <span className="text-xs text-muted">
+                    {new Date(c.createdAt).toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-muted whitespace-pre-wrap">{c.body}</p>
+              </li>
+            ))}
+          </ul>
+
+          {commentError && (
+            <p className="text-sm text-red-400 mb-2" role="alert">
+              {commentError}
+            </p>
+          )}
+
+          {canComment ? (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={commentBody}
+                onChange={(e) => setCommentBody(e.target.value)}
+                placeholder="add a comment"
+                className="flex-1 rounded-md bg-bg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none"
+              />
+              <button
+                onClick={onPostComment}
+                disabled={postComment.isPending || !commentBody.trim()}
+                className="text-sm px-4 py-2 rounded-md bg-accent text-white hover:bg-indigo-500 disabled:opacity-50"
+              >
+                {postComment.isPending ? "posting…" : "post"}
+              </button>
+            </div>
+          ) : (
+            <p className="text-xs text-muted">viewers cannot post comments</p>
+          )}
         </div>
       </div>
     </div>

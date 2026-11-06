@@ -7,8 +7,8 @@ import {
   notFound,
   badRequest,
   getProjectMembership,
-  canEditProject,
 } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { updateProjectSchema } from "@/schemas/project";
 
 type Params = { params: Promise<{ id: string }> };
@@ -51,7 +51,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const membership = await getProjectMembership(user.id, id);
   if (!membership) return forbidden("you are not a member of this project");
-  if (!canEditProject(membership.role)) {
+  if (!can(membership.role, "project:edit")) {
     return forbidden("only project admins can edit project settings");
   }
 
@@ -74,7 +74,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const membership = await getProjectMembership(user.id, id);
   if (!membership) return forbidden("you are not a member of this project");
-  if (!canEditProject(membership.role)) {
+  if (!can(membership.role, "project:delete")) {
     return forbidden("only project admins can delete the project");
   }
 
