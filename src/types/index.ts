@@ -21,6 +21,25 @@ export type ApiTask = {
   assignee?: ApiUser | null;
 };
 
+export type ApiComment = {
+  id: string;
+  taskId: string;
+  authorId: string;
+  body: string;
+  createdAt: string;
+  author: ApiUser;
+};
+
+export type ApiActivity = {
+  id: string;
+  projectId: string;
+  userId: string;
+  action: string;
+  target: string;
+  createdAt: string;
+  user: ApiUser;
+};
+
 export type ApiProjectMember = {
   id: string;
   role: Role;

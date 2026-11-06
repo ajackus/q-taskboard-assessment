@@ -8,6 +8,7 @@ import {
   getProjectMembership,
   canEditTasks,
 } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 import { createTaskSchema } from "@/schemas/task";
 
 type Params = { params: Promise<{ id: string }> };
@@ -84,6 +85,8 @@ export async function POST(req: NextRequest, { params }: Params) {
       assignee: { select: { id: true, name: true, email: true } },
     },
   });
+
+  await logActivity(projectId, user.id, "created task", task.title);
 
   return NextResponse.json({ task }, { status: 201 });
 }
