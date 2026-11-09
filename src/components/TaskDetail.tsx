@@ -54,6 +54,12 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
     });
   }
 
+  function onDelete() {
+    if (!window.confirm("Are you sure you want to delete this task?")) return;
+    setError(null);
+    deleteTask.mutate();
+  }
+
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-center justify-center px-4 z-50"
@@ -131,7 +137,7 @@ export function TaskDetail({ task, projectId, members, onClose }: Props) {
 
         <div className="flex items-center justify-between gap-3">
           <button
-            onClick={() => deleteTask.mutate()}
+            onClick={onDelete}
             disabled={deleteTask.isPending}
             className="text-sm text-red-400 hover:text-red-300"
           >
